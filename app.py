@@ -6,8 +6,8 @@ from transformers import pipeline
 def load_model():
     return pipeline(
         "text-generation",
-        model="EleutherAI/gpt-neo-1.3B",
-        device=-1,  # Set to 0 if you have a GPU locally
+        model="distilgpt2",   # switched to smaller model
+        device=-1,            # use CPU
     )
 
 model = load_model()
