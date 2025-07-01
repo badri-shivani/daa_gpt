@@ -4,5 +4,5 @@ torch==2.7.1
 PyMuPDF
 transformers
 sentence-transformers
-google-api-python-client
+openai
 scikit-learn
