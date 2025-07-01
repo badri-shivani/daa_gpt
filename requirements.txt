@@ -3,5 +3,5 @@ transformers==4.40.0
 torch==2.7.1
 PyMuPDF
 transformers
-
-
+sentence-transformers
+scikit-learn
