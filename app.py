@@ -3,7 +3,7 @@ import streamlit as st
 # Load your notes file
 @st.cache_data
 def load_notes():
-    with open("notes.txt", "r", encoding="utf-8") as f:
+    with open("Notes.txt", "r", encoding="utf-8") as f:
         return f.read()
 
 notes_data = load_notes()
