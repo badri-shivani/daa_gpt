@@ -1,53 +1,52 @@
 import streamlit as st
-import fitz  # PyMuPDF
+import fitz
 from transformers import pipeline
 
-# load summarizer
+# Load QA pipeline
 @st.cache_resource
-def load_summarizer():
-    return pipeline("summarization", model="t5-small")
+def load_qa():
+    return pipeline("question-answering", model="distilbert-base-uncased-distilled-squad")
 
-summarizer = load_summarizer()
+qa = load_qa()
 
-# read pdf lines
+# Load PDF
 @st.cache_data
-def load_syllabus_lines():
+def load_pdf_lines():
     lines = []
     with fitz.open("DevOps-Notes.pdf") as doc:
         for page in doc:
-            page_text = page.get_text()
-            lines.extend(page_text.split("\n"))
-    return [line.strip() for line in lines if line.strip()]
+            lines.extend(page.get_text().split("\n"))
+    return [l.strip() for l in lines if l.strip()]
 
-syllabus_lines = load_syllabus_lines()
+pdf_lines = load_pdf_lines()
 
-st.title("🤖 DevOps Tutor Chatbot")
-st.subheader("Ask me anything from the syllabus!")
+st.title("🤖 DevOps Tutor with Steps")
+st.subheader("Ask detailed questions from your syllabus")
 
-user_input = st.text_area("💬 Ask your question here:", height=100)
+user_input = st.text_area("Your question:")
 
 if st.button("Get Answer"):
-    if user_input.strip() == "":
-        st.warning("Please enter a question.")
+    if not user_input.strip():
+        st.warning("Please ask a question.")
     else:
-        # find relevant lines
         relevant = [
-            line for line in syllabus_lines
+            line for line in pdf_lines
             if user_input.lower() in line.lower()
         ]
         if relevant:
+            # Combine relevant text but limit size
             relevant_text = " ".join(relevant)
-            # avoid huge input
             if len(relevant_text) > 1500:
                 relevant_text = relevant_text[:1500]
-            with st.spinner("Generating simplified notes..."):
-                summary = summarizer(
-                    relevant_text,
-                    max_length=150,
-                    min_length=30,
-                    do_sample=False
-                )[0]['summary_text']
-                st.success("Simplified notes:")
-                st.write(summary)
+            with st.spinner("Finding answer..."):
+                result = qa({
+                    "context": relevant_text,
+                    "question": user_input
+                })
+                answer = result["answer"]
+                st.success("Answer (broken down):")
+                for step in answer.split("."):
+                    if step.strip():
+                        st.write("👉 " + step.strip())
         else:
-            st.info("No direct match found. Please try rephrasing your question.")
+            st.info("No match found. Try rephrasing.")
