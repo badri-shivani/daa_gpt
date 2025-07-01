@@ -1,46 +1,36 @@
 import streamlit as st
-import fitz
-from transformers import pipeline
-
-@st.cache_resource
-def load_qa():
-    return pipeline("question-answering", model="distilbert-base-uncased-distilled-squad")
-
-qa = load_qa()
+import fitz  # PyMuPDF
 
 @st.cache_data
-def load_pdf_lines():
+def load_syllabus_lines():
     lines = []
     with fitz.open("DevOps-Notes.pdf") as doc:
         for page in doc:
-            lines.extend(page.get_text().split("\n"))
-    return [l.strip() for l in lines if l.strip()]
+            page_text = page.get_text()
+            lines.extend(page_text.split("\n"))
+    # remove empty lines and strip whitespace
+    clean_lines = [line.strip() for line in lines if line.strip()]
+    return clean_lines
 
-pdf_lines = load_pdf_lines()
+syllabus_lines = load_syllabus_lines()
 
 st.title("🤖 DevOps Tutor Chatbot")
 st.subheader("Ask me anything from the syllabus!")
 
-question = st.text_area("💬 Ask your question here:", height=100)
+user_input = st.text_area("💬 Ask your question here:", height=100)
 
 if st.button("Get Answer"):
-    if not question.strip():
-        st.warning("Please ask something.")
+    if user_input.strip() == "":
+        st.warning("Please enter a question.")
     else:
-        relevant = [line for line in pdf_lines if question.lower() in line.lower()]
-        if relevant:
-            context = " ".join(relevant)
-            if len(context) > 1500:
-                context = context[:1500]
-            with st.spinner("Thinking..."):
-                result = qa({
-                    "question": question,
-                    "context": context
-                })
-                answer = result["answer"]
-                st.success("Answer (detailed):")
-                for s in answer.split("."):
-                    if s.strip():
-                        st.write("👉", s.strip())
+        # exact matching lines
+        matching_lines = [
+            line for line in syllabus_lines
+            if user_input.lower() in line.lower()
+        ]
+        if matching_lines:
+            st.success("Answer from syllabus:")
+            for line in matching_lines:
+                st.write(f"👉 {line}")
         else:
-            st.info("No match found. Please try rephrasing your question.")
+            st.info("No direct match found. Try rephrasing your question.")
