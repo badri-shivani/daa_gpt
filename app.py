@@ -1,30 +1,28 @@
 import streamlit as st
 from transformers import pipeline
 
-# Load the GPT-Neo model
+# load a small free open model
 @st.cache_resource
 def load_model():
     return pipeline("text-generation", model="EleutherAI/gpt-neo-125M")
 
 generator = load_model()
 
-st.title("🤖 Free AI Tutor with Hugging Face GPT-Neo")
+st.title("🤖 DevOps Tutor Chatbot (Free Huggingface)")
 
 user_input = st.text_area("💬 Ask your question here:", height=100)
 
 if st.button("Get Answer"):
-    if user_input.strip() == "":
+    if not user_input.strip():
         st.warning("Please enter a question.")
     else:
-        with st.spinner("Thinking..."):
-            output = generator(
+        with st.spinner("Generating..."):
+            result = generator(
                 user_input,
                 max_length=200,
                 do_sample=True,
                 temperature=0.7,
-                top_p=0.95,
-                num_return_sequences=1
+                top_p=0.9
             )
-            answer = output[0]["generated_text"]
             st.success("Answer:")
-            st.write(answer)
+            st.write(result[0]["generated_text"])
