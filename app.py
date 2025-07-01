@@ -1,15 +1,13 @@
 import streamlit as st
-import fitz  # PyMuPDF
+import fitz
 from transformers import pipeline
 from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
+from googleapiclient.discovery import build
 
 st.set_page_config(page_title="🤖 DevOps Tutor", page_icon="🤖", layout="wide")
 
-st.title("🤖 DevOps Tutor Chatbot")
-st.subheader("Ask anything from your DevOps syllabus and get clear, concept-based answers!")
-
-# 1️⃣ chunk PDF into chunks
+# 1️⃣ PDF chunking
 @st.cache_data
 def chunk_pdf(file_path, chunk_size=200):
     chunks = []
@@ -24,53 +22,86 @@ def chunk_pdf(file_path, chunk_size=200):
 
 chunks = chunk_pdf("DevOps-Notes.pdf")
 
-# 2️⃣ load embedding model
+# 2️⃣ embedding model
 @st.cache_resource
 def load_embedder():
-    return SentenceTransformer('all-MiniLM-L6-v2')
+    return SentenceTransformer("all-MiniLM-L6-v2")
 
 embedder = load_embedder()
 
-# 3️⃣ embed all chunks
 @st.cache_resource
 def embed_chunks(chunks):
     return embedder.encode(chunks)
 
 chunk_embeddings = embed_chunks(chunks)
 
-# 4️⃣ load QA pipeline
+# 3️⃣ QA pipeline
 @st.cache_resource
 def load_qa():
     return pipeline("question-answering", model="distilbert-base-uncased-distilled-squad")
 
 qa = load_qa()
 
-# 5️⃣ user input
-user_question = st.text_area("💬 Ask your DevOps question here:", height=100)
+# 4️⃣ Google search fallback
+api_key = "YOUR_GOOGLE_API_KEY"  # replace with your API key
+cse_id = "e15a2d9c1870c4b49"
+
+def google_search(query):
+    service = build("customsearch", "v1", developerKey=api_key)
+    res = service.cse().list(q=query, cx=cse_id, num=3).execute()
+    if 'items' in res:
+        return [item['snippet'] for item in res['items']]
+    else:
+        return []
+
+# 5️⃣ UI
+st.title("🤖 DevOps Tutor Chatbot")
+st.subheader("Ask anything from your syllabus, or I'll try to look it up online!")
+
+question = st.text_area("💬 Ask your DevOps question:", height=100)
 
 if st.button("Get Answer"):
-    if not user_question.strip():
+    if not question.strip():
         st.warning("Please enter a question.")
     else:
-        # embed the question
-        with st.spinner("Finding best matching section..."):
-            question_embedding = embedder.encode([user_question])
-            sims = cosine_similarity(question_embedding, chunk_embeddings)
+        # embed question
+        with st.spinner("Finding best match in your notes..."):
+            question_emb = embedder.encode([question])
+            sims = cosine_similarity(question_emb, chunk_embeddings)
+            best_score = sims.max()
             best_idx = sims.argmax()
-            best_chunk = chunks[best_idx]
         
-        # pass best chunk to QA
-        with st.spinner("Generating answer..."):
-            result = qa({
-                "question": user_question,
-                "context": best_chunk
-            })
-            answer = result["answer"]
+        if best_score > 0.4:
+            best_chunk = chunks[best_idx]
+            with st.spinner("Answering from notes..."):
+                result = qa({
+                    "question": question,
+                    "context": best_chunk
+                })
+                answer = result["answer"]
+                st.success("Answer from DevOps Notes:")
+                for step in answer.split("."):
+                    if step.strip():
+                        st.write("👉", step.strip())
+        else:
+            st.info("No good match in your notes. Searching the web...")
+            snippets = google_search(question)
+            if snippets:
+                web_text = " ".join(snippets)
+                summarizer = pipeline("summarization", model="facebook/bart-large-cnn")
+                with st.spinner("Summarizing Google results..."):
+                    summary = summarizer(
+                        web_text,
+                        max_length=180,
+                        min_length=50,
+                        do_sample=False
+                    )[0]['summary_text']
+                    st.success("Answer from Google:")
+                    for step in summary.split("."):
+                        if step.strip():
+                            st.write("👉", step.strip())
+            else:
+                st.warning("No results from Google either. Try rephrasing your question.")
 
-            # break answer into steps if long
-            st.success("Answer:")
-            for step in answer.split("."):
-                if step.strip():
-                    st.write("👉", step.strip())
+        st.caption("⚡ Answers are either from your notes or a web search.")
 
-        st.info(f"🔎 Answer based on most relevant chunk of your notes.")
