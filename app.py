@@ -2,14 +2,12 @@ import streamlit as st
 import fitz
 from transformers import pipeline
 
-# Load QA pipeline
 @st.cache_resource
 def load_qa():
     return pipeline("question-answering", model="distilbert-base-uncased-distilled-squad")
 
 qa = load_qa()
 
-# Load PDF
 @st.cache_data
 def load_pdf_lines():
     lines = []
@@ -20,33 +18,29 @@ def load_pdf_lines():
 
 pdf_lines = load_pdf_lines()
 
-st.title("🤖 DevOps Tutor with Steps")
-st.subheader("Ask detailed questions from your syllabus")
+st.title("🤖 DevOps Tutor Chatbot")
+st.subheader("Ask me anything from the syllabus!")
 
-user_input = st.text_area("Your question:")
+question = st.text_area("💬 Ask your question here:", height=100)
 
 if st.button("Get Answer"):
-    if not user_input.strip():
-        st.warning("Please ask a question.")
+    if not question.strip():
+        st.warning("Please ask something.")
     else:
-        relevant = [
-            line for line in pdf_lines
-            if user_input.lower() in line.lower()
-        ]
+        relevant = [line for line in pdf_lines if question.lower() in line.lower()]
         if relevant:
-            # Combine relevant text but limit size
-            relevant_text = " ".join(relevant)
-            if len(relevant_text) > 1500:
-                relevant_text = relevant_text[:1500]
-            with st.spinner("Finding answer..."):
+            context = " ".join(relevant)
+            if len(context) > 1500:
+                context = context[:1500]
+            with st.spinner("Thinking..."):
                 result = qa({
-                    "context": relevant_text,
-                    "question": user_input
+                    "question": question,
+                    "context": context
                 })
                 answer = result["answer"]
-                st.success("Answer (broken down):")
-                for step in answer.split("."):
-                    if step.strip():
-                        st.write("👉 " + step.strip())
+                st.success("Answer (detailed):")
+                for s in answer.split("."):
+                    if s.strip():
+                        st.write("👉", s.strip())
         else:
-            st.info("No match found. Try rephrasing.")
+            st.info("No match found. Please try rephrasing your question.")
