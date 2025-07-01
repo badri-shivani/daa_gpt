@@ -3,7 +3,7 @@ import requests
 
 @st.cache_data
 def load_notes():
-    url = "https://raw.githubusercontent.com/username/reponame/main/notes.txt"
+    url = "https://raw.githubusercontent.com/badri-shivani/daa_gpt/main/notes.txt"
     response = requests.get(url)
     response.raise_for_status()
     return response.text
