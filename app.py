@@ -3,7 +3,8 @@ from openai import OpenAI
 import os
 
 # Load your API key from Streamlit Secrets
-api_key = st.secrets["k-xxxxxxWIcA"]
+api_key = st.secrets["OPENAI_API_KEY"]
+
 
 client = OpenAI(api_key=api_key)
 
