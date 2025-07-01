@@ -1,30 +1,30 @@
 import streamlit as st
-from openai import OpenAI
-import os
+from transformers import pipeline
 
-# Load your API key from Streamlit Secrets
-api_key = st.secrets["OPENAI_API_KEY"]
+# Load the GPT-Neo model
+@st.cache_resource
+def load_model():
+    return pipeline("text-generation", model="EleutherAI/gpt-neo-125M")
 
+generator = load_model()
 
-client = OpenAI(api_key=api_key)
+st.title("🤖 Free AI Tutor with Hugging Face GPT-Neo")
 
-st.title("🤖 DevOps + General GPT Assistant")
-st.subheader("Ask anything — directly powered by GPT!")
-
-question = st.text_area("💬 Ask your question here:")
+user_input = st.text_area("💬 Ask your question here:", height=100)
 
 if st.button("Get Answer"):
-    if not question.strip():
+    if user_input.strip() == "":
         st.warning("Please enter a question.")
     else:
-        with st.spinner("GPT is thinking..."):
-            response = client.chat.completions.create(
-                model="gpt-4o",   # Or use gpt-4-turbo, etc.
-                messages=[
-                    {"role": "system", "content": "You are an expert DevOps tutor, answer clearly and step-by-step."},
-                    {"role": "user", "content": question}
-                ]
+        with st.spinner("Thinking..."):
+            output = generator(
+                user_input,
+                max_length=200,
+                do_sample=True,
+                temperature=0.7,
+                top_p=0.95,
+                num_return_sequences=1
             )
-            answer = response.choices[0].message.content
+            answer = output[0]["generated_text"]
             st.success("Answer:")
             st.write(answer)
