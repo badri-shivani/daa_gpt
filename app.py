@@ -1,16 +1,18 @@
 import streamlit as st
 import fitz  # PyMuPDF
 
-# Read the syllabus.pdf directly from the repo
 @st.cache_data
-def load_syllabus_text():
-    text = ""
+def load_syllabus_lines():
+    lines = []
     with fitz.open("DevOps-Notes.pdf") as doc:
         for page in doc:
-            text += page.get_text()
-    return text
+            page_text = page.get_text()
+            lines.extend(page_text.split("\n"))
+    # remove empty lines and strip whitespace
+    clean_lines = [line.strip() for line in lines if line.strip()]
+    return clean_lines
 
-syllabus_text = load_syllabus_text()
+syllabus_lines = load_syllabus_lines()
 
 st.title("🤖 DevOps Tutor Chatbot")
 st.subheader("Ask me anything from the syllabus!")
@@ -21,12 +23,14 @@ if st.button("Get Answer"):
     if user_input.strip() == "":
         st.warning("Please enter a question.")
     else:
+        # exact matching lines
         matching_lines = [
-            line for line in syllabus_text.split("\n")
+            line for line in syllabus_lines
             if user_input.lower() in line.lower()
         ]
         if matching_lines:
             st.success("Answer from syllabus:")
-            st.write("\n".join(matching_lines))
+            for line in matching_lines:
+                st.write(f"👉 {line}")
         else:
             st.info("No direct match found. Try rephrasing your question.")
