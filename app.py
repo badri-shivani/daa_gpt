@@ -1,6 +1,15 @@
 import streamlit as st
 import fitz  # PyMuPDF
+from transformers import pipeline
 
+# load summarizer
+@st.cache_resource
+def load_summarizer():
+    return pipeline("summarization", model="facebook/bart-large-cnn")
+
+summarizer = load_summarizer()
+
+# read pdf lines
 @st.cache_data
 def load_syllabus_lines():
     lines = []
@@ -8,9 +17,7 @@ def load_syllabus_lines():
         for page in doc:
             page_text = page.get_text()
             lines.extend(page_text.split("\n"))
-    # remove empty lines and strip whitespace
-    clean_lines = [line.strip() for line in lines if line.strip()]
-    return clean_lines
+    return [line.strip() for line in lines if line.strip()]
 
 syllabus_lines = load_syllabus_lines()
 
@@ -23,14 +30,24 @@ if st.button("Get Answer"):
     if user_input.strip() == "":
         st.warning("Please enter a question.")
     else:
-        # exact matching lines
-        matching_lines = [
+        # find relevant lines
+        relevant = [
             line for line in syllabus_lines
             if user_input.lower() in line.lower()
         ]
-        if matching_lines:
-            st.success("Answer from syllabus:")
-            for line in matching_lines:
-                st.write(f"👉 {line}")
+        if relevant:
+            relevant_text = " ".join(relevant)
+            # avoid huge input
+            if len(relevant_text) > 1500:
+                relevant_text = relevant_text[:1500]
+            with st.spinner("Generating simplified notes..."):
+                summary = summarizer(
+                    relevant_text,
+                    max_length=150,
+                    min_length=30,
+                    do_sample=False
+                )[0]['summary_text']
+                st.success("Simplified notes:")
+                st.write(summary)
         else:
-            st.info("No direct match found. Try rephrasing your question.")
+            st.info("No direct match found. Please try rephrasing your question.")
