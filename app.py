@@ -8,7 +8,7 @@ def load_model():
 
 generator = load_model()
 
-st.title("🤖 DevOps Tutor Chatbot (Free Huggingface)")
+st.title("🤖 DevOps Tutor Chatbot")
 
 user_input = st.text_area("💬 Ask your question here:", height=100)
 
